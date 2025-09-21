@@ -178,7 +178,7 @@ const loginUser = async (req, res) => {
             return res.status(400).json({ message: "Invalid email" })
         }
 
-        if(!user.isVerified){
+        if (!user.isVerified) {
             return res.status(403).json({ message: "User not verified" })
         }
 
@@ -242,9 +242,9 @@ const profile = async (req, res) => {
 
 
 
-       const userinfo = await User.findById(user.id).select("name email createdAt role")
-       if (!userinfo) return res.status(404).json({ success: false, message: "User not found" })
-        const {name, email, createdAt, role } = userinfo
+        const userinfo = await User.findById(user.id).select("name email createdAt role")
+        if (!userinfo) return res.status(404).json({ success: false, message: "User not found" })
+        const { name, email, createdAt, role } = userinfo
 
 
         return res.status(200).json({
@@ -258,7 +258,7 @@ const profile = async (req, res) => {
         })
 
     } catch (error) {
-        console.log("Profile Error : ", error )
+        console.log("Profile Error : ", error)
         return res.status(500).json({ message: "Internal Server Error", success: false })
     }
 
@@ -269,12 +269,91 @@ const logout = async (req, res) => {
 
     res.clearCookie("token")
     return res.status(200).json({ message: "Logged out successfully", success: true })
-  }
+}
 
 
-const forgotPassword = async (req, res) => {    }
 
-const resetPassword = async (req, res) => {    }
+const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/
+const forgotPassword = async (req, res) => {
+    // get email from user
+    // validate
+    // check if user exsists
+    //  create a resetpasswdtoken and save in db
+    // set expiry time for token
+    // send email to user with the token
+    // send success response
+
+
+    try {
+        const { email } = req.body
+
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({ error: 'Invalid email address', message: "Enter a valid email" });
+        }
+
+        const user = await User.findOne({ email })
+        if (!user) {
+            return res.status(400).json({ message: "User doesn't exist" })
+        }
+
+        const token = generateToken()
+
+        user.resetPasswordToken = token
+        user.resetPasswordExpires = Date.now() + (24 * 60 * 60 * 1000)
+        await user.save()
+
+        const transporter = createTransporter()
+
+        const mailOption = {
+            from: process.env.MAIL_USERNAME,
+            to: user.email,
+            subject: "Reset ypur password",
+            text: `Please click on the following link:
+         ${process.env.BASE_URL}/api/v1/user/reset/${token}
+          `,
+        };
+
+        transporter.sendMail(mailOption);
+        return res.status(200).json({ message: "Email sent successfully. Please check your email", success: true })
+
+    } catch (error) {
+        console.log(error)
+        return res.status(400).json({ message: "FORGOT PASSWORD ERROR" })
+    }
+
+
+
+}
+
+const resetPassword = async (req, res) => {
+    try {
+
+        const { password } = req.body
+        const { token } = req.params
+
+
+        const user = await User.findOne(
+            {
+                resetPasswordToken: token,
+                resetPasswordExpires: { $gt: Date.now() }
+            }
+        )
+        if (!user) {
+            return res.status(400).json({ message: "User doesn't exist" })
+        }
+
+        user.password = password
+        user.resetPasswordToken = null
+        user.resetPasswordExpires = null
+        await user.save()
+        return res.status(200).json({ message: "Password reset successfully", success: true })
+
+    } catch (error) {
+        console.log(error)
+        return res.status(400).json({ message: "User doesn't exist", success: false })
+    }
+
+}
 
 const greetings = (req, res) => {
     res.send("Welcome User")

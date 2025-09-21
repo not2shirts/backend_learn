@@ -1,5 +1,5 @@
 import express from "express";
-import { registerUser, greetings, verifyUser, loginUser, profile, logout } from "../Controller/user.controller.js";
+import { registerUser, greetings, verifyUser, loginUser, profile, logout, forgotPassword, resetPassword } from "../Controller/user.controller.js";
 import { isLoggedin } from "../Middleware/auth.middleware.js";
 
 const router = express.Router()
@@ -9,7 +9,8 @@ router.get('/verify/:token', verifyUser)
 router.post('/login', loginUser)
 router.get('/profile', isLoggedin, profile)
 router.get('/logout', isLoggedin,logout )
-
+router.get('/forgot', forgotPassword )
+router.post('/reset/:token', resetPassword )
 router.get('/', greetings )
 
 export default router;
